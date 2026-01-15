@@ -1,0 +1,7 @@
+CREATE TABLE steps (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  process_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  order_index INT NOT NULL,
+  FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE CASCADE
+);

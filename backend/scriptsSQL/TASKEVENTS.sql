@@ -1,0 +1,8 @@
+CREATE TABLE task_events (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  task_id INT NOT NULL,
+  step_id INT NOT NULL,
+  timestamp DATETIME NOT NULL,
+  FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+  FOREIGN KEY (step_id) REFERENCES steps(id) ON DELETE CASCADE
+);
