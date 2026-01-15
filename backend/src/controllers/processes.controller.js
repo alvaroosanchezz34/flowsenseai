@@ -1,5 +1,7 @@
 import { db } from "../config/db.js";
 import Groq from "groq-sdk";
+import { createAlertInternal, alertExists } from "./alerts.controller.js";
+
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const getBottlenecksLogic = async (processId, db) => {
     const [rows] = await db.query(
@@ -192,6 +194,62 @@ export const getBottlenecks = async (req, res) => {
     try {
         const bottlenecks = await getBottlenecksLogic(processId, db);
         res.json(bottlenecks);
+        // calcular media del proceso
+        const totalAvg = bottlenecks.reduce(
+            (sum, b) => sum + b.avgSeconds,
+            0
+        );
+
+        const processAvgSeconds = totalAvg / bottlenecks.length;
+
+        await saveDailyMetric(processId, processAvgSeconds);
+
+        const trend = await checkNegativeTrend(processId, processAvgSeconds);
+
+        if (trend) {
+            const exists = await alertExists(processId, null);
+
+            if (!exists) {
+                await createAlertInternal({
+                    processId,
+                    stepId: null,
+                    severity: "medium",
+                    title: "Empeoramiento del proceso",
+                    description: `El proceso es un ${trend.increasePercent}% más lento que ayer.`,
+                    aiExplanation:
+                        "El rendimiento general del proceso ha empeorado respecto al día anterior. Esto puede indicar sobrecarga, ineficiencias recientes o cambios en la operativa."
+                });
+            }
+        }
+
+
+        for (const bottleneck of bottlenecks) {
+            const exists = await alertExists(processId, bottleneck.stepId);
+
+            if (!exists) {
+                const severity = calculateSeverity(
+                    bottleneck.avgSeconds,
+                    processAvgSeconds
+                );
+
+                const aiExplanation = `
+El paso "${bottleneck.stepName}" se ha identificado como un cuello de botella.
+Su duración media es significativamente mayor que la del resto del proceso,
+lo que provoca retrasos acumulados y reduce la eficiencia general.
+`;
+
+                await createAlertInternal({
+                    processId,
+                    stepId: bottleneck.stepId,
+                    severity,
+                    title: "Cuello de botella detectado",
+                    description: `El paso "${bottleneck.stepName}" presenta tiempos anómalos.`,
+                    aiExplanation
+                });
+
+            }
+        }
+
     } catch (error) {
         console.error(error);
         res.status(500).json({
@@ -241,4 +299,50 @@ ${JSON.stringify(bottlenecks, null, 2)}
             message: "Error explicando cuellos de botella"
         });
     }
+};
+
+const calculateSeverity = (stepAvg, processAvg) => {
+    const ratio = stepAvg / processAvg;
+
+    if (ratio >= 3) return "high";
+    if (ratio >= 2) return "medium";
+    return "low";
+};
+
+const saveDailyMetric = async (processId, avgSeconds) => {
+    await db.query(
+        `
+    INSERT IGNORE INTO process_metrics_daily
+    (process_id, avg_duration_seconds, date)
+    VALUES (?, ?, CURDATE())
+    `,
+        [processId, Math.round(avgSeconds)]
+    );
+};
+
+const checkNegativeTrend = async (processId, todayAvgSeconds) => {
+    const [rows] = await db.query(
+        `
+    SELECT avg_duration_seconds
+    FROM process_metrics_daily
+    WHERE process_id = ?
+      AND date = CURDATE() - INTERVAL 1 DAY
+    `,
+        [processId]
+    );
+
+    if (rows.length === 0) {
+        return null; // no hay datos de ayer
+    }
+
+    const yesterdayAvg = rows[0].avg_duration_seconds;
+    const increaseRatio = (todayAvgSeconds - yesterdayAvg) / yesterdayAvg;
+
+    if (increaseRatio >= 0.2) {
+        return {
+            increasePercent: Math.round(increaseRatio * 100)
+        };
+    }
+
+    return null;
 };
