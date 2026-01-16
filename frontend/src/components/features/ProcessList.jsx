@@ -1,4 +1,17 @@
 function ProcessList({ processes }) {
+    
+    function mostrarEtiquetaEstado(estado) {
+        if (estado === "normal") {
+            return <span className="badge bg-success">Normal</span>
+        }
+        else if (estado === "warning") {
+            return <span className="badge bg-warning text-white">Atención</span>
+        }
+        else {
+            return <span className="badge bg-danger text-white">Problemas</span>
+        }
+    }
+    
     return (
         <div className="card">
             <div className="card-header bg-white">
@@ -14,21 +27,17 @@ function ProcessList({ processes }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {processes.map((process) => (
-                            <tr key={process.id}>
-                                <td><strong>{process.name}</strong></td>
-                                <td>
-                                    {process.status === "normal" ? (
-                                        <span className="badge bg-success">Normal</span>
-                                    ) : process.status === "warning" ? (
-                                        <span className="badge bg-warning text-white">Atención</span>
-                                    ) : (
-                                        <span className="badge bg-danger text-white">Problemas</span>
-                                    )}
-                                </td>
-                                <td>{process.avgTime}</td>
-                            </tr>
-                        ))}
+                        {processes.map(function(procesoActual) {
+                            return (
+                                <tr key={procesoActual.id}>
+                                    <td><strong>{procesoActual.name}</strong></td>
+                                    <td>
+                                        {mostrarEtiquetaEstado(procesoActual.status)}
+                                    </td>
+                                    <td>{procesoActual.avgTime}</td>
+                                </tr>
+                            )
+                        })}
                     </tbody>
                 </table>
             </div>
