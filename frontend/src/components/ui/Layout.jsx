@@ -12,7 +12,7 @@ function Layout({ children }) {
         <div className="d-flex" style={{ minHeight: "100vh" }}>
             <div className="bg-white border-end" style={{ width: "250px", flexShrink: 0 }}>
                 <div className="p-4 border-bottom">
-                    <div className="d-flex align-items-center gap-2 mb-1">
+                    <div className="d-flex align-items-center gap-2 mb-2">
                         <div className="bg-primary rounded d-flex align-items-center justify-content-center" style={{ width: "32px", height: "32px" }}>
                             <Zap size={20} className="text-white" />
                         </div>
