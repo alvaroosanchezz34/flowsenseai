@@ -39,7 +39,6 @@ function Layout({ children }) {
                         <button className="btn btn-outline-secondary" style={{ width: "40px", height: "40px", padding: 0 }}>
                             <Bell size={20} />
                         </button>
-                        <button className="btn btn-primary">+ Nuevo Proceso</button>
                     </div>
                 </nav>
 
