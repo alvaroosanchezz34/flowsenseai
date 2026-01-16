@@ -1,6 +1,6 @@
 import { db } from "../config/db.js";
 import Groq from "groq-sdk";
-import { createAlertInternal, alertExists } from "./alerts.controller.js";
+import { createAlertInternal, alertExists, predictionAlertExists, createPredictionAlert } from "./alerts.controller.js";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const getBottlenecksLogic = async (processId, db) => {
@@ -226,6 +226,10 @@ export const getBottlenecks = async (req, res) => {
         for (const bottleneck of bottlenecks) {
             const exists = await alertExists(processId, bottleneck.stepId);
 
+            await saveStepDailyMetric(
+                bottleneck.stepId,
+                bottleneck.avgSeconds
+            );
             if (!exists) {
                 const severity = calculateSeverity(
                     bottleneck.avgSeconds,
@@ -237,6 +241,11 @@ El paso "${bottleneck.stepName}" se ha identificado como un cuello de botella.
 Su duración media es significativamente mayor que la del resto del proceso,
 lo que provoca retrasos acumulados y reduce la eficiencia general.
 `;
+                console.log("BOTTLENECK OBJECT:", bottleneck);
+                await saveStepDailyMetric(
+                    bottleneck.stepId,
+                    bottleneck.avgSeconds
+                );
 
                 await createAlertInternal({
                     processId,
@@ -345,4 +354,256 @@ const checkNegativeTrend = async (processId, todayAvgSeconds) => {
     }
 
     return null;
+};
+
+export const getProcessMetrics = async (req, res) => {
+    const { processId } = req.params;
+
+    try {
+        const [rows] = await db.query(
+            `
+        SELECT 
+        date,
+        avg_duration_seconds AS avgSeconds
+        FROM process_metrics_daily
+        WHERE process_id = ?
+        ORDER BY date ASC
+        `,
+            [processId]
+        );
+
+        return res.json(rows);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Error obteniendo métricas del proceso"
+        });
+    }
+};
+
+const saveStepDailyMetric = async (stepId, avgSeconds) => {
+    if (!stepId || !avgSeconds) return;
+
+    await db.query(
+        `
+    INSERT IGNORE INTO step_metrics_daily
+    (step_id, avg_duration_seconds, date)
+    VALUES (?, ?, CURDATE())
+    `,
+        [stepId, Math.round(avgSeconds)]
+    );
+};
+
+export const getStepMetrics = async (req, res) => {
+    const { processId } = req.params;
+
+    try {
+        const [steps] = await db.query(
+            `
+      SELECT id, name
+      FROM steps
+      WHERE process_id = ?
+      `,
+            [processId]
+        );
+
+        const result = [];
+
+        for (const step of steps) {
+            const [metrics] = await db.query(
+                `
+        SELECT 
+          date,
+          avg_duration_seconds AS avgSeconds
+        FROM step_metrics_daily
+        WHERE step_id = ?
+        ORDER BY date ASC
+        `,
+                [step.id]
+            );
+
+            result.push({
+                stepId: step.id,
+                stepName: step.name,
+                metrics
+            });
+        }
+
+        return res.json(result);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Error obteniendo métricas por paso"
+        });
+    }
+};
+
+const predictNextValue = (values) => {
+    if (values.length < 2) return null;
+
+    const last = values[values.length - 1];
+    const prev = values[values.length - 2];
+
+    const diff = last - prev;
+
+    return Math.round(last + diff);
+};
+
+export const getStepPredictions = async (req, res) => {
+    const { processId } = req.params;
+
+    try {
+        const [steps] = await db.query(
+            `
+      SELECT id, name
+      FROM steps
+      WHERE process_id = ?
+      `,
+            [processId]
+        );
+
+        const result = [];
+
+        for (const step of steps) {
+            const [metrics] = await db.query(
+                `
+        SELECT avg_duration_seconds
+        FROM step_metrics_daily
+        WHERE step_id = ?
+        ORDER BY date ASC
+        `,
+                [step.id]
+            );
+
+            if (metrics.length < 2) continue;
+
+            const values = metrics.map(m => m.avg_duration_seconds);
+            const predicted = predictNextValue(values);
+
+            const trend =
+                values[values.length - 1] > values[values.length - 2]
+                    ? "up"
+                    : "down";
+
+            const risk =
+                predicted > values[values.length - 1] * 1.2
+                    ? "high"
+                    : "medium";
+
+            if (risk === "high") {
+                const exists = await predictionAlertExists(step.id);
+
+                if (!exists) {
+                    await createPredictionAlert({
+                        processId,
+                        stepId: step.id,
+                        stepName: step.name,
+                        predictedTomorrow: predicted,
+                        todayAvg: values[values.length - 1],
+                        trend
+                    });
+                }
+            }
+
+            result.push({
+                stepId: step.id,
+                stepName: step.name,
+                todayAvg: values[values.length - 1],
+                predictedTomorrow: predicted,
+                trend,
+                risk
+            });
+        }
+
+        return res.json(result);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Error generando predicciones"
+        });
+    }
+};
+
+const calculateProcessScore = ({
+    bottlenecks,
+    predictionRisks,
+    activeAlerts,
+    negativeTrend
+}) => {
+    let score = 100;
+
+    score -= bottlenecks * 10;
+    score -= predictionRisks * 15;
+    score -= activeAlerts * 5;
+
+    if (negativeTrend) {
+        score -= 10;
+    }
+
+    return Math.max(score, 0);
+};
+
+export const getProcessScore = async (req, res) => {
+    const { processId } = req.params;
+
+    try {
+        const [bottlenecks] = await db.query(
+            `
+      SELECT COUNT(*) AS total
+      FROM alerts
+      WHERE process_id = ?
+        AND title = 'Cuello de botella detectado'
+      `,
+            [processId]
+        );
+
+        const [predictionRisks] = await db.query(
+            `
+      SELECT COUNT(*) AS total
+      FROM alerts
+      WHERE process_id = ?
+        AND title = 'Riesgo de empeoramiento'
+      `,
+            [processId]
+        );
+
+        const [activeAlerts] = await db.query(
+            `
+      SELECT COUNT(*) AS total
+      FROM alerts
+      WHERE process_id = ?
+      `,
+            [processId]
+        );
+
+        const negativeTrend = predictionRisks[0].total > 0;
+
+        const score = calculateProcessScore({
+            bottlenecks: bottlenecks[0].total,
+            predictionRisks: predictionRisks[0].total,
+            activeAlerts: activeAlerts[0].total,
+            negativeTrend
+        });
+
+        const riskLevel =
+            score >= 80 ? "low" :
+                score >= 50 ? "medium" :
+                    "high";
+
+        return res.json({
+            score,
+            riskLevel,
+            details: {
+                bottlenecks: bottlenecks[0].total,
+                predictionRisks: predictionRisks[0].total,
+                activeAlerts: activeAlerts[0].total,
+                trend: negativeTrend ? "negative" : "stable"
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            message: "Error calculating process score"
+        });
+    }
 };

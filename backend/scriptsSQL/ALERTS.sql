@@ -7,7 +7,9 @@ CREATE TABLE alerts (
   description TEXT NOT NULL,
   ai_explanation TEXT NULL,
   acknowledged BOOLEAN DEFAULT FALSE,
+  status ENUM('open', 'resolved') DEFAULT 'open',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  resolved_at DATETIME NULL,
 
   FOREIGN KEY (process_id) REFERENCES processes(id) ON DELETE CASCADE,
   FOREIGN KEY (step_id) REFERENCES steps(id) ON DELETE SET NULL

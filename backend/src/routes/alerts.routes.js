@@ -3,7 +3,9 @@ import {
     createAlert,
     getAlertsByProcess,
     getLatestAlerts,
-    acknowledgeAlert
+    acknowledgeAlert,
+    resolveAlert,
+    getAlertHistory
 } from "../controllers/alerts.controller.js";
 
 const router = express.Router();
@@ -17,6 +19,10 @@ router.get("/process/:processId", getAlertsByProcess);
 router.get("/latest", getLatestAlerts);
 
 router.patch("/:id/ack", acknowledgeAlert);
+
+router.post("/:alertId/resolve", resolveAlert);
+
+router.get("/process/:processId/history", getAlertHistory);
 
 
 
