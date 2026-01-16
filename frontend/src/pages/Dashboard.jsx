@@ -27,7 +27,7 @@ function Dashboard() {
             recomendacion: "Implementar una checklist de revisión estandarizada y asignar slots de tiempo fijos para revisiones. Considerar pair programming para reducir la..."
         }
     ]
-    
+
     const alertasRecientes = [
         {
             id: 1,
@@ -60,51 +60,24 @@ function Dashboard() {
                         <h1 className="mb-1 fw-bold">FlowSense AI</h1>
                         <p className="text-muted mb-0">Detecta y elimina cuellos de botella en tus procesos</p>
                     </div>
-                    <button className="btn btn-primary d-flex align-items-center gap-2">
-                        <Sparkles size={18} />
-                        Analizar con IA
-                    </button>
+                    <button className="btn btn-primary d-flex align-items-center gap-2"><Sparkles size={18} />Analizar con IA</button>
                 </div>
 
                 <div className="row mb-4">
                     <div className="col-md-3 mb-3">
-                        <Card
-                            title="Procesos Activos"
-                            value="3"
-                            subtitle="3 totales"
-                            variant="primary"
-                            icono={<Layers size={24} />}
-                        />
+                        <Card title="Procesos Activos" value="3" subtitle="3 totales" variant="primary" icono={<Layers size={24} />} />
                     </div>
-                    
+
                     <div className="col-md-3 mb-3">
-                        <Card
-                            title="Tareas en Progreso"
-                            value="11"
-                            subtitle="3 completadas"
-                            variant="success"
-                            icono={<Activity size={24} />}
-                        />
+                        <Card title="Tareas en Progreso" value="11" subtitle="3 completadas" variant="success" icono={<Activity size={24} />} />
                     </div>
-                    
+
                     <div className="col-md-3 mb-3">
-                        <Card
-                            title="Cuellos de Botella"
-                            value="2"
-                            subtitle="1 críticos"
-                            variant="danger"
-                            icono={<AlertTriangle size={24} />}
-                        />
+                        <Card title="Cuellos de Botella" value="2" subtitle="1 críticos" variant="danger" icono={<AlertTriangle size={24} />} />
                     </div>
-                    
+
                     <div className="col-md-3 mb-3">
-                        <Card
-                            title="Retrabajo Promedio"
-                            value="0.4x"
-                            subtitle="por tarea"
-                            variant="warning"
-                            icono={<RefreshCw size={24} />}
-                        />
+                        <Card title="Retrabajo Promedio" value="0.4x" subtitle="por tarea" variant="warning" icono={<RefreshCw size={24} />} />
                     </div>
                 </div>
 
@@ -112,40 +85,18 @@ function Dashboard() {
                     <div className="col-lg-8 mb-4">
                         <div className="d-flex justify-content-between align-items-center mb-3">
                             <h4 className="mb-0 fw-bold">Cuellos de Botella Detectados</h4>
-                            <a href="#ver-procesos" className="btn btn-link text-decoration-none">
-                                Ver procesos
-                                <ChevronRight size={16} className="ms-1" />
-                            </a>
+                            <a href="#ver-procesos" className="btn btn-link text-decoration-none"> Ver procesos <ChevronRight size={16} className="ms-1" /></a>
                         </div>
-                        
-                        {cuellosDeBotellaDetectados.map(function(cuello) {
-                            return (
-                                <BottleneckCard
-                                    key={cuello.id}
-                                    titulo={cuello.titulo}
-                                    pipeline={cuello.pipeline}
-                                    duracion={cuello.duracion}
-                                    ratio={cuello.ratio}
-                                    tareasAfectadas={cuello.tareasAfectadas}
-                                    severidad={cuello.severidad}
-                                    recomendacion={cuello.recomendacion}
-                                />
-                            )
+
+                        {cuellosDeBotellaDetectados.map(function (cuello) {
+                            return <BottleneckCard key={cuello.id} titulo={cuello.titulo} pipeline={cuello.pipeline} duracion={cuello.duracion} ratio={cuello.ratio} tareasAfectadas={cuello.tareasAfectadas} severidad={cuello.severidad} recomendacion={cuello.recomendacion} />
                         })}
                     </div>
-                    
+
                     <div className="col-lg-4">
                         <h4 className="mb-3 fw-bold">Alertas Recientes</h4>
-                        {alertasRecientes.map(function(alerta) {
-                            return (
-                                <AlertaReciente
-                                    key={alerta.id}
-                                    titulo={alerta.titulo}
-                                    descripcion={alerta.descripcion}
-                                    proceso={alerta.proceso}
-                                    tipo={alerta.tipo}
-                                />
-                            )
+                        {alertasRecientes.map(function (alerta) {
+                            return <AlertaReciente key={alerta.id} titulo={alerta.titulo} descripcion={alerta.descripcion} proceso={alerta.proceso} tipo={alerta.tipo} />
                         })}
                     </div>
                 </div>

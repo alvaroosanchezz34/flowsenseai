@@ -28,15 +28,12 @@ function Card({ title, value, subtitle, variant, icono }) {
         }
     }
     
-    const colorFondo = obtenerColorFondo(variant)
-    const colorIcono = obtenerColorIcono(variant)
-    
     return (
         <div className="card h-100" style={{ boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)", border: "1px solid #e5e7eb" }}>
             <div className="card-body">
                 <div className="d-flex justify-content-between align-items-start mb-3">
-                    <div style={{ backgroundColor: colorFondo, borderRadius: "8px", padding: "8px", display: "inline-flex" }}>
-                        <div style={{ color: colorIcono }}>{icono}</div>
+                    <div style={{ backgroundColor: obtenerColorFondo(variant), borderRadius: "8px", padding: "8px", display: "inline-flex" }}>
+                        <div style={{ color: obtenerColorIcono(variant) }}>{icono}</div>
                     </div>
                 </div>
                 <h2 className="mb-1 fw-bold">{value}</h2>
