@@ -1,4 +1,4 @@
-import { Clock } from "lucide-react"
+import { Clock, Flame } from "lucide-react"
 
 function BottleneckCard({ titulo, pipeline, duracion, ratio, tareasAfectadas, severidad, recomendacion }) {
     
@@ -44,7 +44,7 @@ function BottleneckCard({ titulo, pipeline, duracion, ratio, tareasAfectadas, se
                 
                 <div className="bg-light p-3 rounded">
                     <div className="d-flex align-items-start gap-2">
-                        <span className="text-primary">💡</span>
+                        <span className="text-primary"><Flame size={20} className="text-danger justify-content-center align-items-center" /></span>
                         <div>
                             <small className="text-primary fw-bold d-block mb-1">Recomendación IA</small>
                             <small className="text-muted">{recomendacion}</small>
